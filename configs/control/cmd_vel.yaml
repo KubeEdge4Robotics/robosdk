@@ -1,0 +1,9 @@
+name: "ros_cmd_vel"
+description: ""
+driver:
+  version: "0.0.1"
+  type: "ros"
+  name: "ros_cmd_vel"
+data:
+  target: "/cmd_vel"
+

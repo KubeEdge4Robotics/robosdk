@@ -13,7 +13,6 @@
 # limitations under the License.
 import os
 
-
 _VERSION = os.path.join(os.path.dirname(__file__), "VERSION")
 
 with open(_VERSION, "r", encoding="utf-8") as fin:

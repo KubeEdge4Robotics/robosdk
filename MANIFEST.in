@@ -1,0 +1,3 @@
+include requirements.txt README.md robosdk/VERSION
+prune tests
+prune examples

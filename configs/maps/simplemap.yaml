@@ -1,0 +1,13 @@
+name: "mapping"
+manufacturer: ""
+series: ""
+description: ""
+driver:
+  version: "ros1"
+  type: "ros"
+  name: "ros_mapping_driver"
+data:
+  support: true
+  kind: "mapfile"
+  map: "/map.pgm"
+  config: "/map.yaml"

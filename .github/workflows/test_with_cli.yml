@@ -1,0 +1,47 @@
+name: test_with_cli
+
+on:
+  pull_request_review:
+    types: [ submitted ]
+  workflow_dispatch:
+
+jobs:
+  test_with_cli:
+    if: github.event.review.state == 'approved'
+    name: test_with_cli
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
+
+      - name: Azure Login
+        uses: Azure/login@v1.1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r tests/requirements.test.txt
+
+      - name: Setup ssh
+        run: |
+          ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa <<< y >/dev/null
+
+      - name: Generate config
+        env:
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }}
+        run: |
+          python -m tests.cli.scripts.generate_config
+
+      - name: Run test
+        env:
+          test_with_cli: True
+          training_only: True
+        run: |
+          python -m unittest -f tests/cli/run.py

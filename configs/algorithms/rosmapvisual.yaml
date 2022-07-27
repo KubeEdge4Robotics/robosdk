@@ -1,0 +1,7 @@
+name: "map_visual"
+description: ""
+driver:
+  backend: "ros1"
+  type: "ros"
+localizer:
+  algorithm: "tf_localizer"

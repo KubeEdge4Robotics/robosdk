@@ -1,0 +1,11 @@
+map:
+  name: "example"
+  driver: "ros_pgm_map"
+  param:
+  save_url: "/tmp"
+service:
+  driver: "webrtc_control_server"
+  param:
+    port: 5540
+    cors_allowed_origins: "*"
+    ice_servers: ""

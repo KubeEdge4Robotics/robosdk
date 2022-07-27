@@ -1,0 +1,16 @@
+name: "laser"
+manufacturer: ""
+series: ""
+description: ""
+driver:
+  version: "ros1"
+  type: "ros"
+  name: "ros_laser_driver"
+data:
+  support: true
+  target: "/laser"
+  pose: "/odom"
+  map_frame: "map"
+  base_link: "laser"
+  subscribe:
+    data_class: "sensor_msgs/LaserScan"

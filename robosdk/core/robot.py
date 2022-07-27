@@ -12,59 +12,93 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import asyncio
 from importlib import import_module
+from typing import List
 
-from robosdk.utils.logger import logging
-from robosdk.utils.fileops import FileOps
-from robosdk.utils.util import Config
-from robosdk.utils.context import BaseConfig
-from robosdk.utils.class_factory import ClassType
-from robosdk.utils.class_factory import ClassFactory
-from robosdk.utils.exceptions import SensorError
+from robosdk.backend import BackendBase
+from robosdk.cloud_robotics.skills import SkillBase
+from robosdk.common.class_factory import ClassFactory
+from robosdk.common.class_factory import ClassType
+from robosdk.common.config import BaseConfig
+from robosdk.common.config import Config
+from robosdk.common.constant import RoboControlMode
+from robosdk.common.exceptions import SensorError
 from robosdk.sensors.base import SensorManage
+from robosdk.utils.util import MethodSuppress
+from robosdk.utils.util import cancel_on_exception
 
-__all__ = ("_init_cfg", "Robot",)
+from .base import RoboBase
 
-
-def _init_cfg(config, kind="robots"):
-    if config and config.endswith((".yaml", ".yml")):
-        config = FileOps.download(config)
-    else:
-        config = os.path.join(
-            BaseConfig.configPath, kind, f"{config}.yaml"
-        )
-    return config if os.path.isfile(config) else None
+__all__ = ("Robot", )
 
 
-class Robot:
+class Robot(RoboBase):
     """
      This class builds robot specific objects by reading
      a configuration and instantiating the necessary robot
      module objects.
     """
 
-    def __init__(self, name: str, config: str = None):
+    def __init__(self, name: str,
+                 config: str = None,
+                 only_sensors: List = None,
+                 ignore_sensors: List = None,
+                 use_control: bool = True
+                 ):
+        super(Robot, self).__init__(name=name, config=config, kind="robots")
         self.robot_name = name
-        cfg = _init_cfg(config=config, kind="robots")
-        self.config = Config(cfg)
-        self.logger = logging.bind(instance=self.robot_name)
-        self.control = None
+        self.skill = None
         self.all_sensors = {}
-        self.has_connect = False
+        self.ignore_sensors = ignore_sensors if ignore_sensors else []
+        self.only_sensors = only_sensors if only_sensors else []
+        self.has_connect: bool = False
+        if BaseConfig.BACKEND is None:
+            if hasattr(self.config, "environment"):
+                self.backend: BackendBase = ClassFactory.get_cls(
+                    ClassType.BACKEND,
+                    self.config.environment.backend
+                )()
+            else:
+                self.backend = None
+            BaseConfig.BACKEND = self.backend
+        else:
+            self.backend = BaseConfig.BACKEND
+        self._mode: RoboControlMode = RoboControlMode.Lock
+        self.use_control = (use_control and "control" in self.config)
+
+    @property
+    def control_mode(self):
+        return self._mode
+
+    @control_mode.setter
+    def control_mode(self, mode: RoboControlMode):
+        # todo: when control_mode change to lock, only manual is allowed
+        if mode != self._mode:
+            pass
+        self._mode = mode
 
     def connect(self):
-        if self.config.environment.backend == "ros":
-            import rospy
-            rospy.init_node(self.robot_name)
+        if self.backend:
+            self.backend.connect(name=self.robot_name)
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.gather(
+        tasks = asyncio.gather(
             self.initial_sensors(),
-            self.initial_navigation(),
             self.initial_control(),
-        ))
+            self.initial_skill(),
+        )
+        cancel_on_exception(tasks)
+        try:
+            loop.run_until_complete(tasks)
+        except asyncio.CancelledError:
+            pass
         self.has_connect = True
+        self._mode = RoboControlMode.Auto
+
+    def close(self):
+        if self.backend:
+            self.backend.close()
+        map(lambda s: s.clear(), self.all_sensors.values())
 
     def add_sensor(self, sensor: str, name: str, config: Config):
         try:
@@ -74,11 +108,13 @@ class Robot:
             cls = ClassType.GENERAL
         if sensor not in self.all_sensors:
             self.all_sensors[sensor] = SensorManage()
+
+        # noinspection PyBrodException
         try:
             driver_cls = ClassFactory.get_cls(cls, config['driver']['name'])
             driver = driver_cls(name=name, config=config)
         except:  # noqa
-            raise SensorError(f"Initial sensor driver {name} failure, skip ...")
+            raise SensorError(f"Initial sensor driver {name} failure")
         self.all_sensors[sensor].add(name=name, sensor=driver)
         if len(self.all_sensors[sensor]) == 1:
             setattr(self, sensor.lower(), driver)
@@ -86,27 +122,29 @@ class Robot:
     def add_sensor_cls(self, sensor: str):
         try:
             _ = import_module(f"robosdk.sensors.{sensor.lower()}")
-            cls = getattr(ClassType, sensor.upper())
         except (ModuleNotFoundError, AttributeError):
-            cls = ClassType.GENERAL
+            self.logger.error(f"Non-existent sensor driver: "
+                              f"`robosdk.sensors.{sensor.lower()}`")
         if sensor not in self.all_sensors:
             self.all_sensors[sensor] = SensorManage()
         for inx, cfg in enumerate(self.config.sensors[sensor]):
-            _cfg = _init_cfg(config=cfg['config'], kind=sensor)
+            _cfg = self._init_cfg(config=cfg['config'], kind=sensor)
             sensor_cfg = Config(_cfg)
             sensor_cfg.update_obj(cfg)
             name = sensor_cfg["name"] or f"{sensor}{inx}"
+            # noinspection PyBrodException
             try:
                 driver_cls = ClassFactory.get_cls(
-                    cls, sensor_cfg['driver']['name'])
+                    ClassType.SENSOR, sensor_cfg['driver']['name'])
                 driver = driver_cls(name=name, config=sensor_cfg)
+                driver.connect()
             except Exception as err:  # noqa
                 self.logger.error(
-                    f"Initial sensor driver {name} failure : {err}, skip ...")
-                return
-            if inx == 0:
-                setattr(self, sensor.lower(), driver)
-            self.all_sensors[sensor].add(name=name, sensor=driver)
+                    f"Initial sensor driver {name} failure : {err}")
+            else:
+                if inx == 0:
+                    setattr(self, sensor.lower(), driver)
+                self.all_sensors[sensor].add(name=name, sensor=driver)
         if len(self.all_sensors[sensor]) > 1:
             self.logger.warning(
                 f"Multiple {sensor}s defined in Robot {self.robot_name}.\n"
@@ -117,6 +155,10 @@ class Robot:
 
     async def initial_sensors(self):
         for sensor in self.config.sensors:
+            if ((self.ignore_sensors and sensor in self.ignore_sensors) or
+                    (self.only_sensors and sensor not in self.only_sensors)):
+                self.logger.info(f"skip sensor {sensor} ...")
+                continue
             self.add_sensor_cls(sensor)
 
     def switch_sensor(self, sensor: str, name: str):
@@ -131,37 +173,42 @@ class Robot:
         return True
 
     async def initial_control(self):
-        if "control" not in self.config:
+        if not self.use_control:
             return
         for ctl_dict in self.config['control']:
             ctl = list(ctl_dict.keys())[0]
             cfg = ctl_dict[ctl]
-            _cfg = _init_cfg(config=cfg['config'], kind="control")
+            _cfg = self._init_cfg(config=cfg['config'], kind="control")
             control = Config(_cfg)
             try:
-                _ = import_module(f"robosdk.sensors.control.{ctl.lower()}")
+                _ = import_module(f"robosdk.control.{ctl.lower()}")
                 driver_cls = ClassFactory.get_cls(ClassType.CONTROL,
                                                   control['driver']['name'])
                 driver = driver_cls(name=ctl, config=control)
             except Exception as e:
                 self.logger.error(f"Initial control driver {ctl} failure, {e}")
-                continue
-            setattr(self.control, ctl.lower(), driver)
+                setattr(self, ctl.lower(),
+                        MethodSuppress(logger=self.logger, method=ctl.lower()))
+            else:
+                setattr(self, ctl.lower(), driver)
 
-    async def initial_navigation(self):
-        if "navigation" not in self.config:
+    async def initial_skill(self):
+        # todo: allow load/unload skills for robot from CloudRobotics
+        skills = ClassFactory.list(ClassType.ROBOTICS_SKILL)
+        self.skill = MethodSuppress(logger=self.logger, method="skill")
+        for skill in skills:
+            driver_cls: SkillBase = ClassFactory.get_cls(
+                ClassType.ROBOTICS_SKILL, skill)
+            action = driver_cls(robot=self)
+            setattr(self.skill, skill, action)
+
+    def skill_register(self, name: str, driver_cls: SkillBase):
+        if not isinstance(driver_cls, SkillBase):
+            self.logger.error(f"skill {name} should inherit `SkillBase`")
             return
-        cfg = _init_cfg(config=self.config["navigation"]['config'],
-                        kind="common")
-        nav_cfg = Config(cfg)
-        nav_cfg.update_obj(self.config["navigation"])
-        name = nav_cfg["name"]
-        try:
-            _ = import_module("robosdk.algorithms.navigation")
-            driver_cls = ClassFactory.get_cls(ClassType.NAVIGATION,
-                                              nav_cfg['driver']['name'])
-            driver = driver_cls(name=name, config=nav_cfg)
-        except Exception as e:
-            self.logger.error(f"Initial navigation driver {name} failure, {e}")
-            return
-        setattr(self, "navigation", driver)
+        ClassFactory.register_cls(
+            ClassType.ROBOTICS_SKILL, name, driver_cls
+        )
+        action = driver_cls(robot=self)
+        setattr(self.skill, name, action)
+        self.logger.info(f"register skill {name} to {self.robot_name}")

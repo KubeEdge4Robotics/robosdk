@@ -1,0 +1,74 @@
+
+name: build
+
+on:
+  push:
+    tags:
+    - "robosdk-[0-9]+\\.[0-9]+\\.*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: setup python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install wheel twine
+
+    - name: Install build dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Build wheel on Windows and macOS
+      if: runner.os == 'Windows' || runner.os == 'macOS'
+      run: |
+        python setup.py bdist_wheel
+
+    - name: Build manylinux wheel
+      if: runner.os == 'Linux' && matrix.python-version == '3.6'
+      uses: RalfG/python-wheels-manylinux-build@v0.3.1-manylinux2010_x86_64
+      with:
+        python-versions: 'cp36-cp36m cp37-cp37m cp38-cp38m cp39-cp39m'
+        build-requirements: 'numpy'
+        pip-wheel-args: '-w ./wheelhouse' # save wheel packages to wheelhouse folder
+        pre-build-command: 'export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH'
+
+    - name: Move valid packages to dist folder for manylinux
+      if: runner.os == 'Linux' && matrix.python-version == '3.6'
+      run: |
+        mkdir -p dist
+        cp wheelhouse/robosdk-*-manylinux*.whl dist
+
+    - name: Build source package on linux
+      if: runner.os == 'Linux' && matrix.python-version == '3.6'
+      run: |
+        python setup.py sdist
+
+    - name: Upload linux wheel to artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: local-wheels
+        path: |
+          dist/*.whl
+          dist/*.gz
+#
+#    - name: Publish wheels to PyPI
+#      env:
+#        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+#        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+#      if: (runner.os == 'Linux' && matrix.python-version == '3.6') || (runner.os == 'Windows' || runner.os == 'macOS')
+#      run: |
+#        twine upload --verbose dist/*.whl

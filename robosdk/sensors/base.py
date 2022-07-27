@@ -15,11 +15,13 @@
 import abc
 import copy
 import threading
+from typing import Dict
 
-from robosdk.utils.logger import logging
-from robosdk.utils.util import Config
-from robosdk.utils.class_factory import ClassType
-from robosdk.utils.class_factory import ClassFactory
+from robosdk.common.config import BaseConfig
+from robosdk.common.config import Config
+from robosdk.common.logger import logging
+
+__all__ = ("SensorBase", "RosSensorBase", "SensorManage")
 
 
 class SensorBase(metaclass=abc.ABCMeta):
@@ -30,54 +32,107 @@ class SensorBase(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, name: str, config: Config):
+        self.backend = BaseConfig.BACKEND
         self.sensor_name = name
         self.config = config
+        self._info = {}
+        self.has_connect = False
         self.interaction_mode = self.config.get("driver", {}).get("type", "UK")
         self.logger = logging.bind(instance=self.sensor_name, sensor=True)
 
+    @property
+    def sys_time(self) -> float:
+        return self.backend.get_time()
+
+    @property
+    def info(self):
+        """
+        Property used to store sensor readings
+        """
+        return self._info
+
+    @info.setter
+    def info(self, value):
+        self._info = value
+
+    @info.deleter
+    def info(self):
+        self._info = {}
+
     def connect(self):
-        pass
+        """Connect with sensor"""
+        raise NotImplementedError()
 
     def close(self):
-        pass
+        """stop subscribe the sensor data"""
+        raise NotImplementedError()
 
     def reset(self):
         """Reset the sensor data"""
-        raise NotImplementedError("Sensor object must reset")
+        raise NotImplementedError()
 
 
-@ClassFactory.register(ClassType.GENERAL, alias="ros_common_driver")
-class RosCommonDriver(SensorBase): # noqa
-
+class RosSensorBase(SensorBase):  # noqa
     def __init__(self, name, config: Config = None):
-        super(RosCommonDriver, self).__init__(name=name, config=config)
+        super(RosSensorBase, self).__init__(name=name, config=config)
+        data_topic = self.config.data.target
+        parameters = getattr(self.config.data, "subscribe", None) or {}
+        self.topic_lock = threading.RLock()
+        self.data_sub = self.backend.subscribe(
+            data_topic, callback=self._callback, **parameters)
+        self._data: Dict = {}
+        self._raw = None
 
-        import rospy
-        import rostopic
-        import roslib.message
-        import message_filters
+    def connect(self):
+        if self.has_connect:
+            self.logger.warning(
+                f"sensor {self.sensor_name} has already connected")
+            return
+        self.has_connect = True
+        self.reset()
 
-        self.data_lock = threading.RLock()
-        self.sensor_kind = name
-        self.data = None
-        try:
-            msg_type, _, _ = rostopic.get_topic_type(self.config.data.target)
-            self.message_class = roslib.message.get_message_class(msg_type)
-        except rostopic.ROSTopicIOException:
-            self.logger.error(f"message type - {name} were unable to load.")
-            self.message_class = rospy.msg.AnyMsg
-        self.sub = message_filters.Subscriber(
-            self.config.data.target, self.message_class)
-        self.sub.registerCallback(self.data_callback)
-
-    def data_callback(self, data):
-        self.data = data
-
-    def get_data(self):
-        return copy.deepcopy(self.data)
+    def reset(self):
+        self._info[self.sensor_name] = {
+            "count": 0, "error": 0, "target": self.config.data.target,
+            "connect": self.sys_time, "close": 0
+        }
 
     def close(self):
-        self.sub.sub.unregister()
+        if not self.has_connect:
+            return
+        self.has_connect = False
+        self.backend.unsubscribe(self.data_sub)
+        self._info[self.sensor_name]["close"] = self.sys_time
+
+    @property
+    def data(self) -> Dict:
+        if self._raw is not None:
+            try:
+                self._data: Dict = self.backend.data_transform(
+                    self._raw, fmt="json"
+                )
+            except Exception as e:  # noqa
+                self.logger.error(f"get data from battery "
+                                  f"[{self.sensor_name}] fail: {str(e)}")
+        else:
+            self._data = {}
+        return self._data
+
+    def get_data(self):
+        self.topic_lock.acquire()
+        ts = self.sys_time
+        data = copy.deepcopy(self.data)
+        self.topic_lock.release()
+        return data, ts
+
+    def _callback(self, data):
+        if not self.has_connect:
+            return
+        self._info[self.sensor_name]["count"] += 1
+        if data is not None:
+            self._raw = data
+        else:
+            self._info[self.sensor_name]["error"] += 1
 
 
 class SensorManage:
@@ -89,13 +144,23 @@ class SensorManage:
     def add(self, name: str, sensor: SensorBase = None):
         if not len(self._all_sensors):
             self.default_sensor = name
+
         self._all_sensors[name] = sensor
 
     def remove(self, name: str):
         if name in self._all_sensors:
             del self._all_sensors[name]
         if self.default_sensor == name:
-            self.default_sensor = list(self._all_sensors.keys())[0] if len(self) else ""
+            self.default_sensor = (list(self._all_sensors.keys())[0]
+                                   if len(self) else None)
+
+    def clear(self):
+        for sensor in self._all_sensors:
+            # noinspection PyBrodException
+            try:
+                self._all_sensors[sensor].close()
+            except:  # noqa
+                pass
 
     def __len__(self) -> int:
         return len(self._all_sensors)

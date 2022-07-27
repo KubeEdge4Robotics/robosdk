@@ -1,0 +1,27 @@
+name: "movebase"
+description: ""
+driver:
+  backend: "ros1"
+  type: "ros"
+target:
+  goal: "/move_base_simple/goal"  # goal to be pusblished
+  status: "/move_base/status"  # topic used to get status of movebase
+  cancel: "/move_base/cancel"  # topic used to cancel the goal sent to movebase
+  action: "/move_base"  # Ros action topic for movebase
+  move_vel: "/cmd_vel"  # topic used to set velocity
+  laserscan: "/scan"
+  map_frame: "map"  # world frame name
+sampling:
+  name: "odom"
+  config: "transform"
+  data:
+    target: "/tf"
+limited:
+  min_distance: 0.1
+  exec_time: 0
+requirement:  # Used to generate ros package.
+  - actionlib
+  - actionlib_msgs
+  - move_base_msgs
+  - geometry_msgs
+  - tf

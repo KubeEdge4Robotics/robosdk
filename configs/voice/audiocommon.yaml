@@ -1,0 +1,19 @@
+name: "voice"
+manufacturer: ""
+series: ""
+description: ""
+driver:
+  version: "ros1"
+  type: "ros"
+  name: "ros_voice_driver"
+data:
+  support: true
+  target: "/audio/audio"
+  actual_hz: 1
+  origin_hz: 10
+info:
+  target: "/audio/audio_info"
+output:
+  target: "/audio/audio_output"
+requirement:  # Used to generate ros package.
+  - deep_msgs

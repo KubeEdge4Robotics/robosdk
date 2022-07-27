@@ -1,0 +1,19 @@
+name: "tf"
+manufacturer: ""
+series: ""
+description: ""
+driver:
+  version: "ros1"
+  type: "ros"
+  name: "ros_tf_driver"
+data:
+  support: true
+  target: "/odom"
+  pose: "initialpose"
+  map_frame: "map"  # world frame name
+  frame_id: "odom"
+  base_link: "base_link"
+  actual_hz: 10
+  origin_hz: 200
+requirement:  # Used to generate ros package.
+  - tf

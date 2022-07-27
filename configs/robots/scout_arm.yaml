@@ -1,0 +1,65 @@
+name: "松灵手臂小车"
+manufacturer: "agilex"
+series: "scout"
+description: "Wheeled trolley with operating arm"
+environment:
+  backend: "ros1"  # ros1 / ros2 / harmony
+  requirement:
+    - rospy
+    - rostopic
+    - roslib
+sensors:
+  camera:
+    - name: "camera_front"
+      config: "realsense435i"
+      rgb:
+        target: "/camera/color/image_raw" # Topic in ros or function in class
+        actual_hz: 10
+        origin_hz: 30
+        is_compressed: false
+      depth:
+        target: "/camera/depth/image_rect_raw"
+        aligned_depth_to_color: "/camera/aligned_depth_to_color/image_raw"
+      info:
+        target: "/camera/color/camera_info"
+    - name: "camera_arm"
+      config: "realsense435i"
+      rgb:
+        target: "/cam1/color/image_raw"
+        actual_hz: 10
+        origin_hz: 30
+        is_compressed: false
+      depth:
+        target: "/cam1/depth/image_rect_raw"
+        aligned_depth_to_color: "/cam1/aligned_depth_to_color/image_raw"
+      info:
+        target: "/cam1/color/camera_info"
+  battery:
+    - name: "battery"
+      config: "simplebattery"
+      data:
+        target: "/battery_level"
+        actual_hz: 1
+        origin_hz: 10
+  odom:
+    - name: "odom"
+      config: "transform"
+      data:
+        target: "/tf"
+  lidar:
+    - name: "laser"
+      config: "simplelaser"
+      data:
+        target: "/scan"
+        laser_frame: "velodyne"
+  maps:
+    - name: "maps"
+      config: "simplemap"
+      data:
+        map: "/map"
+        meta: "/map_meta"
+        kind: "topic"
+control:
+  - motion:
+      name: "ros_cmd_vel"
+      config: "cmd_vel"

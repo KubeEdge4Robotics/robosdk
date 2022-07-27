@@ -1,0 +1,79 @@
+name: "重德配送机器人"
+manufacturer: "droid"
+series: "droid"
+description: ""
+environment:
+  backend: "ros1"  # ros1 / ros2 / harmony
+  requirement:
+    - rospy
+    - rostopic
+    - roslib
+sensors:
+  camera:
+    - name: "camera_front"
+      config: "realsense435i"
+      rgb:
+        target: "/camera/rgb/image" # Topic in ros or function in class
+        actual_hz: 10
+        origin_hz: 30
+        is_compressed: false
+      depth:
+        target: "/camera/depth/image_raw"
+      info:
+        target: "/camera/rgb/camera_info"
+    - name: "cam0"
+      config: "simplecamera"
+      rgb:
+        target: "/usb_cam_0/image_raw"
+        actual_hz: 10
+        origin_hz: 30
+        is_compressed: false
+      info:
+        target: "/usb_cam_0/camera_info"
+    - name: "cam1"
+      config: "simplecamera"
+      rgb:
+        target: "/usb_cam_1/image_raw"
+        actual_hz: 10
+        origin_hz: 30
+        is_compressed: false
+      info:
+        target: "/usb_cam_1/camera_info"
+    - name: "cam2"
+      config: "simplecamera"
+      rgb:
+        target: "/usb_cam_2/image_raw"
+        actual_hz: 10
+        origin_hz: 30
+        is_compressed: false
+      info:
+        target: "/usb_cam_2/camera_info"
+  battery:
+    - name: "battery"
+      config: "simplebattery"
+      data:
+        target: "/base_driver/battery_state"
+        actual_hz: 1
+        origin_hz: 10
+  odom:
+    - name: "odom"
+      config: "transform"
+      data:
+        target: "/tf"
+  lidar:
+    - name: "laser"
+      config: "simplelaser"
+      data:
+        target: "/scan"
+        laser_frame: "velodyne"
+  maps:
+    - name: "maps"
+      config: "simplemap"
+      data:
+        map: "/map"
+        meta: "/map_meta"
+        kind: "topic"
+control:
+  - motion:
+      name: "ros_cmd_vel"
+      config: "cmd_vel"
