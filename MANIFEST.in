@@ -1,0 +1,2 @@
+include requirements.txt README.md robosdk/VERSION
+recursive-include examples *.txt *.md *.py

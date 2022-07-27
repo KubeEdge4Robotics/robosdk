@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from .robot import Robot
-from .world import World
