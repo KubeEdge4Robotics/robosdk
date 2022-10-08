@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-A* grid planning
-author: Atsushi Sakai(@Atsushi_twi)
-        Nikos Kanargias (nkana@tee.gr)
-see https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/AStar/a_star.py  # noqa
-"""
-
 import math
 
 from robosdk.common.class_factory import ClassFactory
@@ -35,6 +28,14 @@ __all__ = ("AStar", )
 
 @ClassFactory.register(ClassType.NAVIGATION)
 class AStar(PathMaker):  # noqa
+    """
+
+    A* grid planning
+    author: Atsushi Sakai(@Atsushi_twi)
+            Nikos Kanargias (nkana@tee.gr)
+    see https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/AStar/a_star.py  # noqa
+
+    """
 
     def __init__(self,
                  world_map: PgmMap,

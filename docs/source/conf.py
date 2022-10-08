@@ -12,10 +12,20 @@
 
 import os
 import sys
+import subprocess
 
 from recommonmark.parser import CommonMarkParser
 
-sys.path.insert(0, os.path.abspath("../.."))
+try:
+    import autoapi
+except ModuleNotFoundError:
+    subprocess.check_call([sys.executable, "-m", "pip",
+                           "install", "sphinx-autoapi"])
+
+
+_base_path = os.path.abspath("../..")
+
+sys.path.insert(0, _base_path)
 
 
 os.environ["APIDOC_GEN"] = os.environ.get("APIDOC_GEN", "True")
@@ -24,7 +34,6 @@ os.environ["APIDOC_GEN"] = os.environ.get("APIDOC_GEN", "True")
 project = "robosdk"
 copyright = '2021, Kubeedge'
 author = 'Kubeedge'
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -58,12 +67,24 @@ if os.environ["APIDOC_GEN"] == "True":
 else:
     exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "apidoc"]
 
+autoapi_type = "python"
+autoapi_dirs = [f"{_base_path}/robosdk", f"{_base_path}/examples"]
+autoapi_options = [
+    'members', 'undoc-members', 'show-inheritance',
+    'show-module-summary', 'special-members', 'imported-members'
+]
+
+subprocess.check_call([
+    "sphinx-apidoc", "-o",  "apidoc", os.path.join(_base_path, "robosdk")
+])
+autodoc_inherit_docstrings = False
+autodoc_member_order = "bysource"
+# If true, `todo` and `todoList` produce output, else they produce nothing.
+todo_include_todos = True
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
-# If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = False
 
 # -- Options for HTML output -------------------------------------------------
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -86,6 +107,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ["_static"]
 html_title = "latest"
+html_logo = "_static/logo.png"
 htmlhelp_basename = "RoboSDKDoc"
 
 source_parsers = {
