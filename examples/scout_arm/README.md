@@ -5,7 +5,6 @@
 
 ## RoboSDK APIs examples
 
-### [ysc-x20](https://www.deeprobotics.cn/products_jy_3.html)
+### [scout-arm](https://global.agilex.ai/products/scout-2-0)
 
-* [Camera control](./camera_control/README.md) **[stable]**
-* [Auto Gait Change](./auto_gait_change/README.md) **[stable]**
+* [Teleoperation](./teleoperation/README.md) **[stable]**
