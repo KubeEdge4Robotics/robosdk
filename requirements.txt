@@ -6,7 +6,7 @@ opencv-python>=4.4      # Apache-2.0
 python-socketio~=5.5.0  # MIT
 PyYAML>=5.1.2           # MIT
 requests~=2.27.1        # MIT
-Pillow~=9.0.1           # Apache-2.0
+Pillow>=8.0.1           # Apache-2.0
 pydantic~=1.9.0         # MIT
 websockets~=10.3        # BSD
 tenacity~=8.0.1         # Apache-2.0
@@ -14,7 +14,4 @@ tqdm~=4.64.0            # MIT
 fastapi~=0.78.0         # MIT
 starlette~=0.19.1       # BSD
 uvicorn[standard]       # BSD
-aiortc~=1.3.2           # BSD
 psutil~=5.9.2           # BSD
-av~=9.2.0               # BSD
-setuptools~=65.3.0      # MIT

@@ -35,12 +35,13 @@ class RosCameraDriver(CameraBase):  # noqa
         rgb_topic = self.config.rgb.target
         rgb_s_p = getattr(self.config.rgb, "subscribe", None) or {}
         info_s_p = getattr(self.config.info, "subscribe", None) or {}
+        self.cv_bridge = bridge.CvBridge()
 
         if self.config.rgb.get("is_compressed", False):
-            self.cv_bridge = bridge.CvBridge().compressed_imgmsg_to_cv2
+            self._bridge = self.cv_bridge.compressed_imgmsg_to_cv2
             data_class = self.backend.msg_sensor_generator.CompressedImage
         else:
-            self.cv_bridge = bridge.CvBridge().imgmsg_to_cv2
+            self._bridge = self.cv_bridge.imgmsg_to_cv2
             data_class = self.backend.msg_sensor_generator.Image
         if "data_class" not in rgb_s_p:
             rgb_s_p["data_class"] = data_class
@@ -59,7 +60,7 @@ class RosCameraDriver(CameraBase):  # noqa
     def rgb(self):
         if self.rgb_data is not None:
             try:
-                self._rgb_data = self.cv_bridge(
+                self._rgb_data = self._bridge(
                     self.rgb_data, self.config.rgb.encoding)
                 # if (self.config.rgb.encoding == "bgr8" and
                 #         BaseConfig.MAC_TYPE.startswith("aarch")):
@@ -164,7 +165,7 @@ class RosRGBDCameraDriver(RGBDCameraBase, RosCameraDriver):  # noqa
     def dep(self):
         if self.dep_data is not None:
             try:
-                self._dep_data = self.cv_bridge(
+                self._dep_data = self._bridge(
                     self.dep_data, self.config.depth.encoding)
                 self._dep_data = np.nan_to_num(self._dep_data)
             except Exception as e:  # noqa

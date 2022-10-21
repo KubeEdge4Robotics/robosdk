@@ -177,7 +177,7 @@ class Ros1Backend(BackendBase):  # noqa
         for name in topics:
             d["name"] = name
             d = parse_kwargs(self._msg_subscribe, **d)
-            self._sub[name] = self._msg_subscribe(name, **d)
+            self._sub[name] = self._msg_subscribe(**d)
             all_msg.append(self._sub[name])
         sub = None
         if len(all_msg) == 1:

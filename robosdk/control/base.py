@@ -35,14 +35,11 @@ class ControlBase(metaclass=abc.ABCMeta):
         self.interaction_mode = self.config.get("driver", {}).get("type", "UK")
         self.logger = logging.bind(instance=self.control_instance, sensor=True)
 
-    @abc.abstractmethod
     def connect(self):
-        ...
+        raise NotImplementedError
 
-    @abc.abstractmethod
     def close(self):
-        ...
+        raise NotImplementedError
 
-    @abc.abstractmethod
     def reset(self):
-        ...
+        raise NotImplementedError
