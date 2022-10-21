@@ -1,1 +1,4 @@
 task_id: "example"
+S3_ENDPOINT_URL: ""
+ACCESS_KEY_ID: ""
+SECRET_ACCESS_KEY: ""

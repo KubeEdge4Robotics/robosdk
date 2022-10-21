@@ -225,14 +225,14 @@ class RoboRTCPeerConnection:
 
     async def iceconnectionstatechange(self):
         self.logger.debug("[Event: iceconnectionstatechange]")
-        if self.pc.iceConnectionState == "failed":
-            await self.close()
+        # if self.pc.iceConnectionState == "failed":
+        #     await self.close()
 
     async def connectionstatechange(self):
         self.logger.debug(
             "[Event: connectionstatechange] "
             f"Connection state is {self.pc.connectionState}")
-        if self.pc.connectionState == "failed":
+        if self.pc.connectionState == "closed":
             await self.close()
         if self.pc.connectionState == "connected":
             pass
@@ -270,9 +270,7 @@ class SignalingClient:
             instance=f"{self.instance}RTCPeerConnection",
             system=True
         )
-        self._sio = socketio.AsyncClient(
-            reconnection_attempts=ServiceConst.SocketTimeout.value
-        )
+        self._sio = socketio.AsyncClient()
         self.robot = robot
         self._channels: Dict = {}
         self._data_func = data_func
@@ -296,7 +294,10 @@ class SignalingClient:
         self._sio.on("ice-candidate-received", self.on_ice_candidate)
         while 1:
             try:
-                await self._sio.connect(socket_url)
+                await self._sio.connect(
+                    socket_url,
+                    wait_timeout=ServiceConst.SocketTimeout.value
+                )
             except Exception as err:
                 self.logger.error(f"Socket connect Err: {err}")
             else:
@@ -317,6 +318,8 @@ class SignalingClient:
     async def close(self):
         self.logger.debug("close")
         await self._sio.disconnect()
+        await asyncio.sleep(.1)
+        await self._sio.reconnection()
 
     async def on_room_clients(self, clients):
         self.logger.debug(f"onRoomClientsEvent {clients}")
