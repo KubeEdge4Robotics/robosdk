@@ -116,7 +116,6 @@ class BroadcastCtl:
                 self.logger.info(f'inactive: {id}')
                 await self.sio.disconnect(id)
                 return
-        # asyncio.create_task(self.disconnect_inactive_user(id))
 
     async def disconnect(self, id):
         if id not in self.room_manager:

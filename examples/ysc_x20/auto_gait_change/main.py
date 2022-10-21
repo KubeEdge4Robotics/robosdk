@@ -98,6 +98,9 @@ class DogAutoGait:
         # make camera_front_down as default camera
         self.robot.switch_sensor("camera", "camera_front_down")
 
+        data_cls = self.robot.backend.msg_sensor_generator.Image
+        data_trans = self.robot.camera.cv_bridge.cv2_to_imgmsg
+        
         while 1:
             img, depth = self.robot.camera.get_rgb_depth()
 
@@ -106,7 +109,11 @@ class DogAutoGait:
                 continue
             curr_gait = self.robot.legged.get_curr_gait()
             rsl, gait = self.detector.predict(depth)
-
+            _text = f"Curr Gait: {gait} - {rsl}"
+            cv2.putText(
+                img, _text, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 
+                .8, (255, 255, 0), thickness=1
+            )
             if curr_gait != gait:
                 self.robot.logger.info(
                     f"DepthBaseJudgment: {rsl}-{gait}, now {gait}")
@@ -114,6 +121,11 @@ class DogAutoGait:
                 time.sleep(self.WAIT_TIME_AFTER_CHANGE)
             else:
                 self.robot.logger.debug(f"DepthBaseJudgment: {rsl}-{gait}")
+            self.robot.backend.publish(
+                name="gait_detect", 
+                data=data_trans(img), 
+                data_class=data_cls
+            )
 
 
 if __name__ == '__main__':

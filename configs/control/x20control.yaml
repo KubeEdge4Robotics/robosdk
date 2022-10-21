@@ -9,5 +9,6 @@ parameter:
   ctrl_ip: '192.168.1.120'
   ctrl_port: 43893
   gait_topic: "/gait_state"
+  data_class: "deep_msgs.msg.GaitType"
 requirement:  # Used to generate ros package.
   - deep_msgs
