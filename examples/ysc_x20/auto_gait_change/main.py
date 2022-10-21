@@ -100,7 +100,7 @@ class DogAutoGait:
 
         data_cls = self.robot.backend.msg_sensor_generator.Image
         data_trans = self.robot.camera.cv_bridge.cv2_to_imgmsg
-        
+
         while 1:
             img, depth = self.robot.camera.get_rgb_depth()
 
@@ -111,7 +111,7 @@ class DogAutoGait:
             rsl, gait = self.detector.predict(depth)
             _text = f"Curr Gait: {gait} - {rsl}"
             cv2.putText(
-                img, _text, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 
+                img, _text, (20, 20), cv2.FONT_HERSHEY_SIMPLEX,
                 .8, (255, 255, 0), thickness=1
             )
             if curr_gait != gait:
@@ -122,8 +122,8 @@ class DogAutoGait:
             else:
                 self.robot.logger.debug(f"DepthBaseJudgment: {rsl}-{gait}")
             self.robot.backend.publish(
-                name="gait_detect", 
-                data=data_trans(img), 
+                name="gait_detect",
+                data=data_trans(img),
                 data_class=data_cls
             )
 

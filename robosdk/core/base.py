@@ -23,6 +23,9 @@ __all__ = ("RoboBase", )
 
 
 class RoboBase:
+    """
+    Base class for robot and backend
+    """
 
     def __init__(self,
                  name: str,
@@ -31,11 +34,16 @@ class RoboBase:
                  ):
         self.logger = logging.bind(instance=name)
         config: str = self._init_cfg(config, kind=kind)
-        self.config = Config(config) if config else None
+        self.config = Config(config) if config else {}
         self.ip = BaseConfig.MAC_IP
 
     @staticmethod
     def _init_cfg(config="base", kind="robots"):
+        """
+        :param config: config file
+        :param kind: config kind
+        :return: config file
+        """
         _url = os.path.join(
             BaseConfig.CONFIG_PATH, kind, f"{config}.yaml"
         )
@@ -43,7 +51,7 @@ class RoboBase:
             config = FileOps.download(config, _url)
         else:
             config = _url
-        return config if os.path.isfile(config) else None
+        return config if os.path.isfile(config) else {}
 
     def close(self):
         raise NotImplementedError

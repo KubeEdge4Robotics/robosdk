@@ -27,7 +27,7 @@ from robosdk.utils.util import get_host_ip
 from robosdk.utils.util import get_machine_type
 from robosdk.utils.util import singleton
 
-__all__ = ("BaseConfig", "Config", )
+__all__ = ("BaseConfig", "Config", "UserConfig")
 
 
 def _url2dict(arg):
@@ -204,11 +204,10 @@ class UserConfig(threading.Thread):
 
     def run(self):
         while 1:
-            time.sleep(self._period)
             if not (self.cfg_path and os.path.isfile(self.cfg_path)):
                 continue
-
             self.__data__ = self.load(self.cfg_path)
+            time.sleep(self._period)
 
     @staticmethod
     def load(cfg_path):
@@ -241,7 +240,11 @@ class UserConfig(threading.Thread):
         self.__data__ = Config(new_data)
 
     def get(self, item, default=None):
-        return self.data.get(item, None) or default
+        val = self.data.get(item, None)
+        if not val:
+            # get from env
+            val = os.environ.get(item, None)
+        return val or default
 
 
 @singleton
@@ -265,6 +268,8 @@ class BaseConfig:
 
         FILE_TRANS_PROTOCOL = Context.get(
             "FILE_TRANS_PROTOCOL", "s3")  # support s3/http/local
+        FILE_TRANS_PROXY = Context.get(
+            "FILE_TRANS_PROXY", "")
 
         # Auth by searching values of the following key in `DYNAMICS_CONFING`
         FILE_TRANS_REMOTE_URI = Context.get(
@@ -275,6 +280,8 @@ class BaseConfig:
             "FILE_TRANS_AK_NAME", "ACCESS_KEY_ID")
         FILE_TRANS_AUTH_SK_NAME = Context.get(
             "FILE_TRANS_SK_NAME", "SECRET_ACCESS_KEY")
+        FILE_TRANS_AUTH_DOMAIN = Context.get(
+            "FILE_TRANS_AUTH_DOMAIN", "AUTH_DOMAIN")
 
         __cfg_search = os.path.join(
             sys.prefix, "share", "robosdk", "configs"
@@ -288,7 +295,7 @@ class BaseConfig:
         TEMP_DIR = Context.get("TEMP_DIR", "/tmp")
         LOG_DIR = Context.get("LOG_DIR", "/tmp")  # local path for logs saved
         LOG_URI = Context.get("LOG_URI", "")  # remote url for logs upload
-        LOG_LEVEL = Context.get("LOG_LEVEL", "INFO")  # global logger level
+        LOG_LEVEL = Context.get("LOG_LEVEL", "DEBUG")  # global logger level
 
         _DYNAMICS_CFG = Context.get(
             "USER_CFG_PATH", os.path.join(CONFIG_PATH, "system.custom.yaml")
@@ -297,8 +304,6 @@ class BaseConfig:
         _DYNAMICS_CFG_UPDATE_TIME = int(Context.get(
             "USER_CFG_UPDATE_TIME", "10"
         ))  # user-defined hot loading config file update time
-
-        ICE_SERVER_URLS = Context.get("RTC_ICE_SERVER", "")
 
     DYNAMICS_CONFING = UserConfig(
         cfg_path=_DYNAMICS_CFG, check_period=_DYNAMICS_CFG_UPDATE_TIME)

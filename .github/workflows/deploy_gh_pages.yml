@@ -38,6 +38,8 @@ jobs:
       env:
         PYTHONPATH: .
       run: |
+        sudo apt update
+        sudo apt-get install -y python3-sphinx
         cd ./docs
         sphinx-apidoc -f -o ./source/apidoc ../robosdk/
         make html

@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from .command import SocketControlServer
-from .webrtc import WebRTCControlServer

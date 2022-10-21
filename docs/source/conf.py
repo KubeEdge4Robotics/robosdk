@@ -11,8 +11,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 import os
-import sys
 import subprocess
+import sys
 
 from recommonmark.parser import CommonMarkParser
 
@@ -75,7 +75,7 @@ autoapi_options = [
 ]
 
 subprocess.check_call([
-    "sphinx-apidoc", "-o",  "apidoc", os.path.join(_base_path, "robosdk")
+    "sphinx-apidoc", "-o", "apidoc", os.path.join(_base_path, "robosdk")
 ])
 autodoc_inherit_docstrings = False
 autodoc_member_order = "bysource"

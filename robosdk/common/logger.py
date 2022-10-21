@@ -27,11 +27,20 @@ __all__ = ("logging", )
 
 
 class _Logger:
+    """
+    _Logger is a wrapper of loguru.logger, which provides a convenient way to
+    initialize the logger.
+    """
 
     logger: loguru.logger = loguru.logger
 
     def __init__(self, base: str = BaseConfig.ROBOT_ID,
                  level: str = BaseConfig.LOG_LEVEL):
+        """
+        :param base: base name of the log file
+        :param level: log level
+        """
+
         self.logger.remove()
         if not base:
             base = "RoboArtisan"

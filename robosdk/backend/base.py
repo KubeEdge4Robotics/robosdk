@@ -21,6 +21,9 @@ from typing import Tuple
 
 
 class BackendBase(abc.ABC):
+    """
+    Backend base class.
+    """
 
     def __init__(self):
         self.msg_subscriber = None

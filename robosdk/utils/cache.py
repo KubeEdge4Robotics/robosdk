@@ -23,7 +23,10 @@ __all__ = ("FileCache",)
 
 
 class FileCache(ContextDecorator):
-    """ make temporary file as the cache backend """
+    """
+    wrapper of file, which provides a convenient way to cache data.
+    """
+
     def __init__(self, delete: bool = True):
         self.data = {}
         self._delete = delete

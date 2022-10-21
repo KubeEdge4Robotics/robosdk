@@ -26,6 +26,10 @@ class BaseQueue:
     def __init__(self,
                  queue_maxsize: int = InternalConst.DATA_QUEUE_MAX.value,
                  keep_when_full: bool = False):
+        """
+        :param queue_maxsize: maxsize of queue
+        :param keep_when_full: if True, when queue is full, pop the oldest data
+        """
         self.mq = queue.Queue(maxsize=queue_maxsize)
         self._full = keep_when_full
 
@@ -36,7 +40,6 @@ class BaseQueue:
         return self.mq.empty()
 
     def get(self):
-
         try:
             data = self.mq.get_nowait()
         except queue.Empty:

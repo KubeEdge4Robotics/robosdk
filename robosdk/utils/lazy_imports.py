@@ -19,8 +19,16 @@ __all__ = ("LazyImport",)
 
 
 class LazyImport(types.ModuleType):
+    """
+    LazyImport is a wrapper of module, which provides a convenient way to import
+    modules lazily.
+    """
 
     def __getattribute__(self, item):
+        """
+        :param item: attribute name
+        :return: attribute value
+        """
 
         name = object.__getattribute__(self, '__name__')
 

@@ -15,7 +15,6 @@
 """Common encapsulation of service requests"""
 import asyncio
 import json
-import os
 from typing import Dict
 
 import aiohttp
@@ -53,22 +52,92 @@ class Response:
 
 
 class AsyncRequest:
-    def __init__(self, token: str = "", **parameter):
+    """
+    AsyncRequest is a wrapper of aiohttp.ClientSession, which provides a
+    convenient way to make asynchronous requests.
+    """
+
+    def __init__(self, token: str = "", proxies: str = "", **parameter):
         header = parameter.get("headers", {})
         if token:
             header[aiohttp.hdrs.AUTHORIZATION] = token
         parameter["headers"] = header
-        if os.getenv("http_proxy", "") or os.getenv("https_proxy", ""):
-            parameter["trust_env"] = True
+
+        # if os.getenv("http_proxy", "") or os.getenv("https_proxy", ""):
+        #     parameter["trust_env"] = True
         self._loop = asyncio.get_event_loop()
-        self._client = aiohttp.ClientSession(**parameter)
+        self._client = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(verify_ssl=False),
+            **parameter)
         self._tasks = []
         self._result = []
+        self._proxies = proxies
+
+    def set_auth_token(self, token: str):
+        self._client.headers.update({
+            aiohttp.hdrs.AUTHORIZATION: token
+        })
+
+    def auth_with_iam(self,
+                      ak: str, sk: str, server: str,
+                      domain: str = "Default"
+                      ):
+        """
+        auth with iam
+        :param ak: access key
+        :param sk: secret key
+        :param server: iam server
+        :param domain: domain name
+        :return:
+        """
+        headers = {
+            "Content-Type": "application/json",
+            "X-Auth-User": ak,
+            "X-Auth-Key": sk
+        }
+
+        # generate post data
+        data = {
+            "auth": {
+                "identity": {
+                    "methods": ["password"],
+                    "password": {
+                        "user": {
+                            "name": ak,
+                            "password": sk,
+                            "domain": {
+                                "name": domain
+                            }
+                        }
+                    }
+                },
+                "scope": {
+                    "domain": {
+                        "name": domain
+                    }
+                }
+            }
+        }
+        # get auth token from iam server
+        resp = self._loop.run_until_complete(
+            self._client.post(
+                url=server,
+                headers=headers,
+                data=json.dumps(data)
+            )
+        )
+        # update headers
+        self._client.headers.update({
+            "Content-Type": "application/json",
+            "X-Auth-Token": resp.headers.get("X-Subject-Token")
+        })
 
     def set_header(self, headers: Dict):
+        """ update headers """
         self._client.headers.update(headers)
 
     def set_cookies(self, cookies: Dict):
+        """ update cookies """
         self._client._cookie_jar.update_cookies(cookies)
 
     async def __aenter__(self):
@@ -78,8 +147,10 @@ class AsyncRequest:
         await self._client.close()
 
     async def _request(self, method: str, str_or_url: StrOrURL, **parameter):
+        """ send request """
         async with self._client.request(
-                url=str_or_url, method=method, **parameter
+                url=str_or_url, method=method,
+                proxy=self._get_proxy(), **parameter
         ) as resp:
             self._result.append(
                 Response(await resp.read(), resp)
@@ -120,12 +191,16 @@ class AsyncRequest:
             method=aiohttp.hdrs.METH_PATCH, url=url, data=data, **kwargs
         )
 
+    def _get_proxy(self):
+        return self._proxies or None
+
     async def async_download(self, url: StrOrURL, dst_file: str,
                              method: str = "GET", **parameter):
         import aiofiles
 
         async with asyncio.Semaphore(1):
             async with self._client.request(url=url, method=method,
+                                            proxy=self._get_proxy(),
                                             **parameter) as resp:
                 content = await resp.read()
 
@@ -146,9 +221,18 @@ class AsyncRequest:
         )
         return self._result[-1] if self._result else None
 
-    def delete(self, url: StrOrURL, **kwargs):
+    def async_delete(self, url: StrOrURL, **kwargs):
         """Perform HTTP DELETE request."""
         self.add(method=aiohttp.hdrs.METH_DELETE, url=url, **kwargs)
+
+    def delete(self, url: StrOrURL, **kwargs):
+        """Perform HTTP DELETE request."""
+        self._result = []
+        self._loop.run_until_complete(
+            self._request(method=aiohttp.hdrs.METH_DELETE,
+                          str_or_url=url, **kwargs)
+        )
+        return self._result[-1] if self._result else None
 
     def add(self, url: str, method: str = "GET", **parameter):
         self._tasks.append(
@@ -164,19 +248,33 @@ class AsyncRequest:
         )
         return self._result[-1] if self._result else None
 
+    async def async_request(self, url: str, method: str = "GET", **parameter):
+        self._result = []
+        await self._request(str_or_url=url, method=method, **parameter)
+        return self._result[-1] if self._result else None
+
     def run(self):
         self._result = []
         self._loop.run_until_complete(asyncio.wait(self._tasks))
         return self._result
 
     async def async_ping(self, url):
-        async with self._client.get(url) as resp:
+        async with self._client.get(url, proxy=self._get_proxy()) as resp:
             assert not str(resp.status).startswith(("4", "5"))
 
     def ping(self, url):
-        self._loop.run_until_complete(
-            self.async_ping(url=url)
-        )
+        self._loop.run_until_complete(self.async_ping(url=url))
+
+    async def async_run(self):
+        self._result = []
+        await asyncio.wait(self._tasks)
+        return self._result
+
+    async def async_close(self):
+        await self._client.close()
+
+    def close(self):
+        self._loop.run_until_complete(self._client.close())
 
 
 def test_async_request():

@@ -22,6 +22,7 @@ class ClassType:
     """Const class saved defined class type."""
     GENERAL = 'general'
     BACKEND = 'backend'
+    EVENT = 'event'
 
     CONTROL = "control"
     SENSOR = "sensor"
@@ -45,14 +46,16 @@ class ClassFactory(object):
 
     @classmethod
     def register(cls, type_name=ClassType.GENERAL, alias=None):
-        """Register class into registry.
+        """
+        Register class into registry.
         :param type_name: type_name: type name of class registry
         :param alias: alias of class name
         :return: wrapper
         """
 
         def wrapper(t_cls):
-            """Register class with wrapper function.
+            """
+            Register class with wrapper function.
             :param t_cls: class need to register
             :return: wrapper of t_cls
             """
@@ -71,7 +74,8 @@ class ClassFactory(object):
 
     @classmethod
     def register_cls(cls, t_cls, type_name=ClassType.GENERAL, alias=None):
-        """Register class with type name.
+        """
+        Register class with type name.
         :param t_cls: class need to register.
         :param type_name: type name.
         :param alias: class name.
@@ -89,7 +93,8 @@ class ClassFactory(object):
 
     @classmethod
     def register_from_package(cls, package, type_name=ClassType.GENERAL):
-        """Register all public class from package.
+        """
+        Register all public class from package.
         :param package: package need to register.
         :param type_name: type name.
         :return:
@@ -104,7 +109,8 @@ class ClassFactory(object):
 
     @classmethod
     def is_exists(cls, type_name, cls_name=None):
-        """Determine whether class name is in the current type group.
+        """
+        Determine whether class name is in the current type group.
         :param type_name: type name of class registry
         :param cls_name: class name
         :return: True/False
@@ -116,7 +122,8 @@ class ClassFactory(object):
 
     @classmethod
     def get_cls(cls, type_name, t_cls_name=None):
-        """Get class and bind config to class.
+        """
+        Get class and bind config to class.
         :param type_name: type name of class registry
         :param t_cls_name: class name
         :return: t_cls

@@ -1,5 +1,6 @@
 aiohttp~=3.8.1          # Apache-2.0
 attrs~=19.3.0           # MIT
+pyee~=9.0.4             # MIT
 loguru~=0.6.0           # MIT
 numpy>=1.13.3           # BSD
 opencv-python>=4.4      # Apache-2.0
@@ -15,3 +16,4 @@ fastapi~=0.78.0         # MIT
 starlette~=0.19.1       # BSD
 uvicorn[standard]       # BSD
 psutil~=5.9.2           # BSD
+urllib3~=1.26.12        # MIT

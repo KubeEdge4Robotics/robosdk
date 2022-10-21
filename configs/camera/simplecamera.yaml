@@ -5,7 +5,7 @@ description: ""
 driver:
   version: "ros1"
   type: "ros"
-  name: "ros_rgb_camera_driver"
+  name: "ros_camera_driver"
 rgb:
   support: true
   encoding: "bgr8"

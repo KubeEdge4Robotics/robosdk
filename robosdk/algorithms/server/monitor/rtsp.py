@@ -133,7 +133,7 @@ class _ThreadImageDataManage(threading.Thread):
         else:
             w = int(width) if width else self.width
             h = int(height) if height else self.height
-            frame = np.frombuffer(data).reshape(h, w, -1)
+            frame = np.frombuffer(data)
             try:
                 frame = frame.reshape(h, w, -1)
             except ValueError:

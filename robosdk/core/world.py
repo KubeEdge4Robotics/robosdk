@@ -25,6 +25,9 @@ __all__ = ("World", )
 
 
 class World(RoboBase):
+    """
+    This class builds world specific objects by reading
+    """
 
     def __init__(self,
                  name: str,
@@ -78,6 +81,9 @@ class World(RoboBase):
             self.world_map.parse_panoptic(panoptic)
 
     def start(self):
+        """
+        Start world server
+        """
         if self.world_map is not None:
             self.logger.info("starting map server")
             self.world_map.calc_obstacle_map()

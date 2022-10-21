@@ -22,14 +22,24 @@ from typing import Dict
 from urllib.parse import urlparse
 
 from robosdk.common.config import BaseConfig
+from robosdk.utils.lazy_imports import LazyImport
+from robosdk.utils.request import AsyncRequest
 from tqdm import tqdm
+from urllib3 import ProxyManager
+from urllib3 import Timeout
 
 __all__ = ("FileOps",)
 
 
 class FileOps:
     """
-    This is a class with some class methods to handle some files or folder.
+    The FileTransfer class is designed to provide a unified interface for
+    uploading and downloading files across multiple protocols, including
+    S3, HTTP, and local file systems.
+    The class takes a protocol parameter in its constructor, which specifies
+    the protocol to use for file transfers. The class then provides upload
+    and download methods that take file paths and URLs as arguments,
+     and use the specified protocol to transfer the file.
     """
 
     _S3_PREFIX = "s3://"
@@ -42,6 +52,9 @@ class FileOps:
     _ENDPOINT_NAME = BaseConfig.FILE_TRANS_ENDPOINT_NAME
     _AUTH_AK_NAME = BaseConfig.FILE_TRANS_AUTH_AK_NAME
     _AUTH_SK_NAME = BaseConfig.FILE_TRANS_AUTH_SK_NAME
+    _DOMAIN_NAME = BaseConfig.FILE_TRANS_AUTH_DOMAIN
+
+    _USE_PROXY = BaseConfig.FILE_TRANS_PROXY
 
     @classmethod
     def _normalize_uri(cls, uri: str) -> str:
@@ -54,10 +67,31 @@ class FileOps:
         return uri
 
     @classmethod
+    def _load_proxy(cls, use_ssl: bool = False):
+        if not cls._USE_PROXY:
+            return ""
+        if cls._USE_PROXY.startswith("http"):
+            return cls._USE_PROXY
+        if use_ssl and os.environ.get("https_proxy"):
+            return os.environ["https_proxy"]
+        if use_ssl and os.environ.get("HTTPS_PROXY"):
+            return os.environ["HTTPS_PROXY"]
+        if os.environ.get("http_proxy"):
+            return os.environ["http_proxy"]
+        return os.environ["HTTP_PROXY"]
+
+    @classmethod
     def download(cls, src: str, dst: str = None, untar: bool = False,
                  method: str = "", headers: Dict = None, cookies: Dict = None):
         """
-        Download files to local directory from remote.
+        Download a file from the specified URL to the specified path.
+        :param src: The URL of the file to download.
+        :param dst: The path to which the file should be downloaded.
+        :param untar: Whether to untar the file after downloading.
+        :param method: The HTTP method to use for the download.
+        :param headers: The HTTP headers to use for the download.
+        :param cookies: The HTTP cookies to use for the download.
+        :return: The path to which the file was downloaded.
         """
 
         src = cls._normalize_uri(src)
@@ -96,8 +130,17 @@ class FileOps:
                tar: bool = False, clean: bool = False,
                method: str = "", headers: Dict = None, cookies: Dict = None):
         """
-        Upload the local files to remote.
+        Upload a file from the specified path to the specified URL.
+        :param src: The path of the file to upload.
+        :param dst: The URL to which the file should be uploaded.
+        :param tar: Whether to tar the file before uploading.
+        :param clean: Whether to delete the file after uploading.
+        :param method: The HTTP method to use for the upload.
+        :param headers: The HTTP headers to use for the upload.
+        :param cookies: The HTTP cookies to use for the upload.
+        :return: The URL to which the file was uploaded.
         """
+
         basename = os.path.basename(src)
         dst = cls._normalize_uri(dst)
         dst = re.sub(re.escape(basename) + "$", "", dst)
@@ -123,11 +166,25 @@ class FileOps:
 
     @classmethod
     def download_s3(cls, uri: str, out_dir: str) -> str:
+        """
+        Download a file from S3 to the specified path.
+        :param uri: The URI of the file to download.
+        :param out_dir: The path to which the file should be downloaded.
+        :return: The path to which the file was downloaded.
+        """
+
         client = cls._create_minio_client()
         return cls._download_s3(client, uri, out_dir)
 
     @classmethod
     def download_local(cls, uri: str, out_dir: str) -> str:
+        """
+        Download a file from local to the specified path.
+        :param uri: The URI of the file to download.
+        :param out_dir: The path to which the file should be downloaded.
+        :return: The path to which the file was downloaded.
+        """
+
         local_path = uri.replace(cls._LOCAL_PREFIX, "/", 1)
 
         dest_path = os.path.join(
@@ -136,7 +193,10 @@ class FileOps:
         if os.path.isdir(local_path):
             shutil.copytree(local_path, dest_path, dirs_exist_ok=True)
         elif os.path.isfile(local_path):
-            if not os.path.samefile(local_path, dest_path):
+            # check if the file is already in the destination
+
+            if not (os.path.isfile(dest_path) and
+                    os.path.samefile(local_path, dest_path)):
                 shutil.copy(local_path, dest_path)
 
         return out_dir
@@ -146,6 +206,16 @@ class FileOps:
                           method: str = "GET",
                           headers: Dict = None,
                           cookies: Dict = None):
+        """
+        Download a file from a URI to the specified path.
+        :param uri: The URI of the file to download.
+        :param local_path: The path to which the file should be downloaded.
+        :param method: The HTTP method to use for the download.
+        :param headers: The HTTP headers to use for the download.
+        :param cookies: The HTTP cookies to use for the download.
+        :return: The path to which the file was downloaded.
+        """
+
         client = cls._create_http_client()
         if headers:
             client.set_header(headers)
@@ -162,6 +232,12 @@ class FileOps:
 
     @classmethod
     def upload_s3(cls, src, dst):
+        """
+        Upload a file from the specified path to the specified S3 URL.
+        :param src: The path of the file to upload.
+        :param dst: The S3 URL to which the file should be uploaded.
+        :return: The S3 URL to which the file was uploaded.
+        """
 
         s3 = cls._create_minio_client()
         parsed = urlparse(dst, scheme='s3')
@@ -197,6 +273,16 @@ class FileOps:
                       method: str = "POST",
                       headers: Dict = None,
                       cookies: Dict = None):
+        """
+        Upload a file from the specified path to the specified URI.
+        :param local_path: The path of the file to upload.
+        :param uri: The URI to which the file should be uploaded.
+        :param method: The HTTP method to use for the upload.
+        :param headers: The HTTP headers to use for the upload.
+        :param cookies: The HTTP cookies to use for the upload.
+        :return: The URI to which the file was uploaded.
+        """
+
         client = cls._create_http_client()
         if headers:
             client.set_header(headers)
@@ -227,7 +313,11 @@ class FileOps:
 
     @classmethod
     def _create_minio_client(cls):
-        import minio
+        """
+        Create a Minio client.
+        """
+
+        minio = LazyImport("minio")
 
         ctx = BaseConfig.DYNAMICS_CONFING
         _url = ctx.get(cls._ENDPOINT_NAME, "http://s3.amazonaws.com")
@@ -237,29 +327,44 @@ class FileOps:
             _url = f"https://{_url}"
         url = urlparse(_url)
         use_ssl = url.scheme == 'https' if url.scheme else True
+        use_proxy = cls._load_proxy(use_ssl=use_ssl)
+        if use_proxy:
+            http_client = ProxyManager(
+                use_proxy,
+                timeout=Timeout.DEFAULT_TIMEOUT,
+                cert_reqs="CERT_REQUIRED")
+        else:
+            http_client = None
         client = minio.Minio(
             url.netloc, access_key=_ak,
-            secret_key=_sk, secure=use_ssl
+            secret_key=_sk, secure=use_ssl,
+            http_client=http_client
         )
         return client
 
     @classmethod
     def _create_http_client(cls):
-        from aiohttp import BasicAuth
-        from robosdk.utils.request import AsyncRequest
+        """
+        Create a HTTP client.
+        """
 
         ctx = BaseConfig.DYNAMICS_CONFING
         _ak = ctx.get(cls._AUTH_AK_NAME, None) if cls._AUTH_AK_NAME else None
         _sk = ctx.get(cls._AUTH_SK_NAME, None) if cls._AUTH_SK_NAME else None
 
-        auth = None
-        token = ''
-        if _ak and _sk:
-            auth = BasicAuth(_ak, _sk)
-        elif _ak:
-            token = str(_ak)
-        client = AsyncRequest(token=token, auth=auth)
+        use_proxy = cls._load_proxy() or None
 
+        client = AsyncRequest(proxies=use_proxy)
+        if _ak and _sk:
+            iam_server = ctx.get(cls._ENDPOINT_NAME, None)
+            domain = ctx.get(cls._DOMAIN_NAME, None)
+            try:
+                client.auth_with_iam(
+                    _ak, _sk, server=iam_server, domain=domain)
+            except: # noqa
+                pass
+        elif _ak:
+            client.set_auth_token(str(_ak))
         return client
 
     @classmethod
@@ -320,8 +425,13 @@ class FileOps:
 
     @classmethod
     def _untar(cls, src, dst=None):
-        import tarfile
-        import zipfile
+        """
+        Unpack a tar.gz or zip file.
+        """
+
+        tarfile = LazyImport("tarfile")
+        zipfile = LazyImport("zipfile")
+
         if not (os.path.isfile(src) and str(src).endswith((".gz", ".zip"))):
             return src
         if dst is None:
@@ -340,7 +450,12 @@ class FileOps:
 
     @classmethod
     def _tar(cls, src, dst) -> str:
-        import tarfile
+        """
+        Pack a file or directory to a tar.gz file.
+        """
+
+        tarfile = LazyImport("tarfile")
+
         with tarfile.open(dst, 'w:gz') as tar:
             if os.path.isdir(src):
                 for root, _, files in os.walk(src):

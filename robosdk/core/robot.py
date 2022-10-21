@@ -14,6 +14,7 @@
 
 import asyncio
 from importlib import import_module
+from typing import Any
 from typing import List
 
 from robosdk.backend import BackendBase
@@ -46,6 +47,14 @@ class Robot(RoboBase):
                  ignore_sensors: List = None,
                  use_control: bool = True
                  ):
+        """
+        :param name: robot name
+        :param config: robot config
+        :param only_sensors: only use sensors in this list
+        :param ignore_sensors: ignore sensors in this list
+        :param use_control: if use control
+        """
+
         super(Robot, self).__init__(name=name, config=config, kind="robots")
         self.robot_name = name
         self.skill = None
@@ -69,6 +78,9 @@ class Robot(RoboBase):
 
     @property
     def control_mode(self):
+        """
+        :return: control mode
+        """
         return self._mode
 
     @control_mode.setter
@@ -79,6 +91,9 @@ class Robot(RoboBase):
         self._mode = mode
 
     def connect(self):
+        """
+        connect robot
+        """
         if self.backend:
             self.backend.connect(name=self.robot_name)
         loop = asyncio.get_event_loop()
@@ -101,6 +116,7 @@ class Robot(RoboBase):
         map(lambda s: s.clear(), self.all_sensors.values())
 
     def add_sensor(self, sensor: str, name: str, config: Config):
+
         try:
             _ = import_module(f"robosdk.sensors.{sensor.lower()}")
             cls = getattr(ClassType, sensor.upper())
@@ -202,8 +218,8 @@ class Robot(RoboBase):
             action = driver_cls(robot=self)
             setattr(self.skill, skill, action)
 
-    def skill_register(self, name: str, driver_cls: SkillBase):
-        if not isinstance(driver_cls, SkillBase):
+    def skill_register(self, name: str, driver_cls: Any):
+        if not issubclass(driver_cls, SkillBase):
             self.logger.error(f"skill {name} should inherit `SkillBase`")
             return
         ClassFactory.register_cls(

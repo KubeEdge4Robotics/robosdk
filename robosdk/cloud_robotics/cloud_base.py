@@ -107,11 +107,12 @@ class ServiceBase:
         config = uvicorn.Config(**all_k)
 
         if len(self._static_folder) and hasattr(self.app, "mount"):
-            self.app.mount(
-                "/",
-                StaticFiles(directory="site", html=True),
-                name="static"
-            )
+            for _p in self._static_folder:
+                self.app.mount(
+                    "/static",
+                    StaticFiles(directory=_p, html=False),
+                    name="static"
+                )
         server = Server(config=config)
         with server.run_in_thread() as current_thread:
             return self.wait_stop(current=current_thread)

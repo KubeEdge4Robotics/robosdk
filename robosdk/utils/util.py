@@ -29,6 +29,10 @@ from robosdk.common.schema.pose import BasePose
 
 
 def cancel_on_exception(task):
+    """
+    Cancel task on exception.
+    """
+
     def handler(loop, context):
         loop.default_exception_handler(context)
         if not task.cancelled():
@@ -57,6 +61,7 @@ def singleton(cls):
 
 
 def get_machine_type() -> str:
+    """get machine type"""
     return str(platform.machine()).lower()
 
 
@@ -70,6 +75,9 @@ def get_host_ip():
 
 
 class MethodSuppress:
+    """
+    Suppress the method of the class.
+    """
 
     __dict__ = {}
 
@@ -133,6 +141,9 @@ class EnvBaseContext:
 
 
 def parse_kwargs(func: Callable, **kwargs):
+    """
+    Parse kwargs to func.
+    """
     use_kwargs = getfullargspec(func)
     if use_kwargs.varkw == "kwargs":
         return dict(kwargs)
@@ -140,6 +151,9 @@ def parse_kwargs(func: Callable, **kwargs):
 
 
 def q_to_euler(q: BasePose) -> BasePose:
+    """
+    Convert quaternion to euler.
+    """
     my_epsilon = 1e-10
     euler = BasePose()
     sqx, sqy, sqz, sqw = np.square([q.x, q.y, q.z, q.w])
@@ -164,6 +178,9 @@ def q_to_euler(q: BasePose) -> BasePose:
 
 
 def euler_to_q(euler: BasePose) -> BasePose:
+    """
+    Convert euler to quaternion.
+    """
     q = BasePose()
     cx, cy, cw = np.cos(np.array([euler.x, euler.y, euler.z]) / 2.0)
     sx, sy, sw = np.sin(np.array([euler.x, euler.y, euler.z]) / 2.0)

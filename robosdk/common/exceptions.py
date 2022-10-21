@@ -24,6 +24,16 @@ class SensorError(Exception):
     pass
 
 
+class ComponentError(Exception):
+    """Base class for component exceptions"""
+    pass
+
+
+class RequiredParameterException(Exception):
+    def __init__(self, cls_name):
+        super().__init__(f"`{cls_name}` require parameter")
+
+
 class CloudError(Exception):
     """Base class for cloud service exceptions"""
 

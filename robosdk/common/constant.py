@@ -26,12 +26,18 @@ class Compression(Enum):
 
 
 class RoboControlMode(Enum):
+    """
+    Robot control mode
+    """
     Auto = 0
     Lock = 1
     Remote = 2
 
 
 class BackendStats(Enum):
+    """
+    Backend status
+    """
     CLOSED = "closed"
     CONNECTED = "connected"
     CONNECTING = "connecting"
@@ -39,6 +45,9 @@ class BackendStats(Enum):
 
 
 class RemoteCommandCode(Enum):
+    """
+    Remote command code
+    """
     UP = "W"
     LEFT = "A"
     DOWN = "S"
@@ -50,6 +59,9 @@ class RemoteCommandCode(Enum):
 
 
 class InternalConst(Enum):
+    """
+    Internal const
+    """
     DATA_QUEUE_MAX = 300
     DATA_DUMP_TIMEOUT = 15
     VIDEO_CLOCK_RATE = 9000

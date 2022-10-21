@@ -36,6 +36,9 @@ from .base import BackendBase
 
 @ClassFactory.register(ClassType.BACKEND, alias="ros1")
 class Ros1Backend(BackendBase):  # noqa
+    """
+    ROS1 backend class.
+    """
 
     ros_time_types = ['time', 'duration']
     ros_system_topic = ["/rosout", "/rosout_agg"]
@@ -61,6 +64,10 @@ class Ros1Backend(BackendBase):  # noqa
     def connect(self, name: str,
                 anonymous: bool = True,
                 disable_signals: bool = True):
+        """
+        Connect to ROS1 master.
+        """
+
         if self.has_connect:
             return
         self.client.on_shutdown(self.close)

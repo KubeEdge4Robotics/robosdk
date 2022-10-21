@@ -14,4 +14,3 @@
 
 from .command import ControlWSClient
 from .command import ControlWSRobot
-from .webrtc import RoboRTCPeerConnection
