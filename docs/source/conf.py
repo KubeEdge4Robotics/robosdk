@@ -11,8 +11,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 import os
-import sys
 import subprocess
+import sys
 
 from recommonmark.parser import CommonMarkParser
 

@@ -15,7 +15,6 @@
 """Common encapsulation of service requests"""
 import asyncio
 import json
-import os
 from typing import Dict
 
 import aiohttp
@@ -53,17 +52,20 @@ class Response:
 
 
 class AsyncRequest:
-    def __init__(self, token: str = "", **parameter):
+    def __init__(self, token: str = "", proxies: str = "", **parameter):
         header = parameter.get("headers", {})
         if token:
             header[aiohttp.hdrs.AUTHORIZATION] = token
         parameter["headers"] = header
-        if os.getenv("http_proxy", "") or os.getenv("https_proxy", ""):
-            parameter["trust_env"] = True
+
+        # if os.getenv("http_proxy", "") or os.getenv("https_proxy", ""):
+        #     parameter["trust_env"] = True
         self._loop = asyncio.get_event_loop()
-        self._client = aiohttp.ClientSession(**parameter)
+        self._client = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(verify_ssl=False), **parameter)
         self._tasks = []
         self._result = []
+        self._proxies = proxies
 
     def set_header(self, headers: Dict):
         self._client.headers.update(headers)
@@ -79,7 +81,8 @@ class AsyncRequest:
 
     async def _request(self, method: str, str_or_url: StrOrURL, **parameter):
         async with self._client.request(
-                url=str_or_url, method=method, **parameter
+                url=str_or_url, method=method,
+                proxy=self._get_proxy(), **parameter
         ) as resp:
             self._result.append(
                 Response(await resp.read(), resp)
@@ -120,12 +123,16 @@ class AsyncRequest:
             method=aiohttp.hdrs.METH_PATCH, url=url, data=data, **kwargs
         )
 
+    def _get_proxy(self):
+        return self._proxies or None
+
     async def async_download(self, url: StrOrURL, dst_file: str,
                              method: str = "GET", **parameter):
         import aiofiles
 
         async with asyncio.Semaphore(1):
             async with self._client.request(url=url, method=method,
+                                            proxy=self._get_proxy(),
                                             **parameter) as resp:
                 content = await resp.read()
 
@@ -170,7 +177,7 @@ class AsyncRequest:
         return self._result
 
     async def async_ping(self, url):
-        async with self._client.get(url) as resp:
+        async with self._client.get(url, proxy=self._get_proxy()) as resp:
             assert not str(resp.status).startswith(("4", "5"))
 
     def ping(self, url):

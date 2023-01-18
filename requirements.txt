@@ -15,3 +15,4 @@ fastapi~=0.78.0         # MIT
 starlette~=0.19.1       # BSD
 uvicorn[standard]       # BSD
 psutil~=5.9.2           # BSD
+urllib3~=1.26.12        # MIT

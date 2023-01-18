@@ -23,6 +23,8 @@ from urllib.parse import urlparse
 
 from robosdk.common.config import BaseConfig
 from tqdm import tqdm
+from urllib3 import ProxyManager
+from urllib3 import Timeout
 
 __all__ = ("FileOps",)
 
@@ -42,6 +44,7 @@ class FileOps:
     _ENDPOINT_NAME = BaseConfig.FILE_TRANS_ENDPOINT_NAME
     _AUTH_AK_NAME = BaseConfig.FILE_TRANS_AUTH_AK_NAME
     _AUTH_SK_NAME = BaseConfig.FILE_TRANS_AUTH_SK_NAME
+    _USE_PROXY = BaseConfig.FILE_TRANS_PROXY
 
     @classmethod
     def _normalize_uri(cls, uri: str) -> str:
@@ -52,6 +55,20 @@ class FileOps:
             if uri.startswith(src):
                 return uri.replace(src, dst, 1)
         return uri
+
+    @classmethod
+    def _load_proxy(cls, use_ssl: bool = False):
+        if not cls._USE_PROXY:
+            return ""
+        if cls._USE_PROXY.startswith("http"):
+            return cls._USE_PROXY
+        if use_ssl and os.environ.get("https_proxy"):
+            return os.environ["https_proxy"]
+        if use_ssl and os.environ.get("HTTPS_PROXY"):
+            return os.environ["HTTPS_PROXY"]
+        if os.environ.get("http_proxy"):
+            return os.environ["http_proxy"]
+        return os.environ["HTTP_PROXY"]
 
     @classmethod
     def download(cls, src: str, dst: str = None, untar: bool = False,
@@ -237,9 +254,18 @@ class FileOps:
             _url = f"https://{_url}"
         url = urlparse(_url)
         use_ssl = url.scheme == 'https' if url.scheme else True
+        use_proxy = cls._load_proxy(use_ssl=use_ssl)
+        if use_proxy:
+            http_client = ProxyManager(
+                use_proxy,
+                timeout=Timeout.DEFAULT_TIMEOUT,
+                cert_reqs="CERT_REQUIRED")
+        else:
+            http_client = None
         client = minio.Minio(
             url.netloc, access_key=_ak,
-            secret_key=_sk, secure=use_ssl
+            secret_key=_sk, secure=use_ssl,
+            http_client=http_client
         )
         return client
 
@@ -258,7 +284,9 @@ class FileOps:
             auth = BasicAuth(_ak, _sk)
         elif _ak:
             token = str(_ak)
-        client = AsyncRequest(token=token, auth=auth)
+        use_proxy = cls._load_proxy() or None
+
+        client = AsyncRequest(token=token, proxies=use_proxy, auth=auth)
 
         return client
 
