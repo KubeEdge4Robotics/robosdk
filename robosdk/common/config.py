@@ -265,6 +265,8 @@ class BaseConfig:
 
         FILE_TRANS_PROTOCOL = Context.get(
             "FILE_TRANS_PROTOCOL", "s3")  # support s3/http/local
+        FILE_TRANS_PROXY = Context.get(
+            "FILE_TRANS_PROXY", "")
 
         # Auth by searching values of the following key in `DYNAMICS_CONFING`
         FILE_TRANS_REMOTE_URI = Context.get(
