@@ -78,33 +78,43 @@ class AsyncRequest:
             aiohttp.hdrs.AUTHORIZATION: token
         })
 
-    def auth_with_iam(self,
-                      ak: str, sk: str, server: str,
-                      domain: str = "Default"
-                      ):
-        """
-        auth with iam
-        :param ak: access key
-        :param sk: secret key
-        :param server: iam server
-        :param domain: domain name
-        :return:
-        """
-        headers = {
-            "Content-Type": "application/json",
-            "X-Auth-User": ak,
-            "X-Auth-Key": sk
+    def get_project_id(
+            self, server: str, token: str, region: str = "cn-south-1") -> str:
+        """ get project id from huawei cloud api """
+        if not (token and server):
+            return region
+        _headers = {
+            "Content-Type": "application/json;charset=utf8",
+            "X-Auth-Token": token
         }
+        resp = self._loop.run_until_complete(
+            self._client.get(
+                url=server,
+                headers=_headers,
+                params={
+                    "enabled": True,
+                    "name": region
+                },
+            )
+        )
+        project = resp.json().get("projects", [])
+        if not project:
+            return region
+        return project[0]["id"]
 
-        # generate post data
+    def auth_with_iam(
+            self, name, password, domain, server, project_id
+    ):
+        """ auth with username/password """
+        headers = {"Content-Type": "application/json;charset=utf8"}
         data = {
             "auth": {
                 "identity": {
                     "methods": ["password"],
                     "password": {
                         "user": {
-                            "name": ak,
-                            "password": sk,
+                            "name": name,
+                            "password": password,
                             "domain": {
                                 "name": domain
                             }
@@ -112,13 +122,12 @@ class AsyncRequest:
                     }
                 },
                 "scope": {
-                    "domain": {
-                        "name": domain
+                    "project": {
+                        "name": project_id,
                     }
                 }
             }
         }
-        # get auth token from iam server
         resp = self._loop.run_until_complete(
             self._client.post(
                 url=server,
@@ -138,7 +147,7 @@ class AsyncRequest:
 
     def set_cookies(self, cookies: Dict):
         """ update cookies """
-        self._client._cookie_jar.update_cookies(cookies)
+        self._client._cookie_jar.update_cookies(cookies)  # noqa
 
     async def __aenter__(self):
         return self
@@ -196,7 +205,7 @@ class AsyncRequest:
 
     async def async_download(self, url: StrOrURL, dst_file: str,
                              method: str = "GET", **parameter):
-        import aiofiles
+        import aiofiles  # noqa
 
         async with asyncio.Semaphore(1):
             async with self._client.request(url=url, method=method,

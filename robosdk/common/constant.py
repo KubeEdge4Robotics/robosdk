@@ -144,4 +144,24 @@ class Motion(Enum):
     ForceTimes = 10
 
 
+class RoboArtisan(Enum):
+    """meta services of RoboArtisan"""
+    base = "Base Service"
+    iam = "Identity and Access Management Service"
+    roboss = "Robot Simulation Service"
+    robooms = "Robot Operation and management Service"
+    robomap = "Robot Map Service"
+    roboskill = "Robot Skill Service"
+
+
+RoboArtisanCloudAPI = {
+    "HuaweiCloud": {
+        RoboArtisan.iam: "https://iam.{region}.myhuaweicloud.com/v3",
+        RoboArtisan.robooms: "https://oms.{region}.myhuaweicloud.com/v1",
+        RoboArtisan.roboss: "https://ss.{region}.myhuaweicloud.com/v1",
+        RoboArtisan.robomap: "https://map.{region}.myhuaweicloud.com/v1"
+    }
+}
+
+
 DateTimeFormat = "%y%m%d%H:%M"
