@@ -296,7 +296,7 @@ class Ros1Backend(BackendBase):  # noqa
         elif cls._is_ros_binary_type(field_type):
             if binary_array_as_bytes:
                 field_value = cls._convert_from_ros_binary(field_value)
-            elif type(field_value) == str:
+            elif isinstance(field_value, str):
                 field_value = [ord(v) for v in field_value]
             else:
                 field_value = list(field_value)

@@ -89,7 +89,10 @@ class RobotCommander:
         self.sendSimpleCommand("DANCE")
 
     def start_force_mode(self):
-        self.sendSimpleCommand("START_FORCE_MODE")
+        self.sendSimple(3)
+
+    def start_auto_mode(self):
+        self.sendSimple(4)
 
     def motion_start_stop(self):
         self.sendSimpleCommand("MOTION_START_STOP")
@@ -121,12 +124,10 @@ class DeepRoboticsControl(LeggedControl):  # noqa
         super(DeepRoboticsControl, self).__init__(name=name, config=config)
 
         self._GAIT_CODE = {
-            0: GaitType.LIEON,
-            1: GaitType.STAND,
-            2: GaitType.HOLD,
-            3: GaitType.TROT,
-            10: GaitType.FALL,
-            11: GaitType.UPSTAIR,
+            0: GaitType.TROT,
+            1: GaitType.UPSTAIR,
+            2: GaitType.SLIP,
+            3: GaitType.RUN,
         }
         self.msg_lock = threading.RLock()
         self.curr_gait = GaitType.UNKONWN
@@ -161,6 +162,13 @@ class DeepRoboticsControl(LeggedControl):  # noqa
 
     def get_curr_gait(self) -> GaitType:
         return self.curr_gait
+
+    def force_control(self):
+        self.commander.start_force_mode()
+
+    def lie_down(self):
+        self.commander.motion_start_stop()
+        self.commander.stand_down_up()
 
     def change_gait(self, gait: Union[str, GaitType]):
         if isinstance(gait, str):

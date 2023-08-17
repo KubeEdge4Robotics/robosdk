@@ -206,6 +206,7 @@ class Robot(RoboBase):
                 setattr(self, ctl.lower(),
                         MethodSuppress(logger=self.logger, method=ctl.lower()))
             else:
+                driver.connect()
                 setattr(self, ctl.lower(), driver)
 
     async def initial_skill(self):

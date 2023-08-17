@@ -134,6 +134,8 @@ class GaitType(Enum):
     STAND = 1
     HOLD = 2
     TROT = 3
+    RUN = 4
+    SLIP = 5
     FALL = 10
     UPSTAIR = 11
     UNKONWN = 99
