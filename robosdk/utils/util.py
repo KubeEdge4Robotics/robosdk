@@ -14,11 +14,14 @@
 
 """This script contains some common tools."""
 import asyncio
+import hashlib
+import hmac
 import os
 import platform
 import socket
 import warnings
 from copy import deepcopy
+from datetime import datetime
 from functools import wraps
 from inspect import getfullargspec
 from typing import Callable
@@ -26,6 +29,31 @@ from typing import Callable
 import numpy as np
 import yaml
 from robosdk.common.schema.pose import BasePose
+
+
+def HMAC256(key: str, msg: str) -> str:
+    """
+    HMAC256
+    """
+    return hmac.new(
+        bytes(key, 'utf-8'), bytes(msg, 'utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+
+def genearteMD5(item) -> str:
+    hl = hashlib.md5()
+    hl.update(item.encode(encoding='utf-8'))
+    return hl.hexdigest()
+
+
+def gen_token(length: int = 4):
+    """
+    generate token
+    """
+    return str(
+        hashlib.sha256(str(datetime.now()).encode('utf-8')).hexdigest()
+    )[:length]
 
 
 def cancel_on_exception(task):

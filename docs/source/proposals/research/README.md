@@ -1,0 +1,3 @@
+# Research in RoboSDK
+
+This directory contains valuable research efforts that contribute to the development and advancement of RoboSDK. Please note that the content within this directory is focused on research findings, concepts, and ideas and does not include specific implementation code. Additionally, the inclusion of research here does not guarantee immediate integration into the main RoboSDK codebase, and there are no fixed timelines or roadmaps for implementation.

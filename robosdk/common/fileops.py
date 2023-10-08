@@ -53,6 +53,7 @@ class FileOps:
     _AUTH_AK_NAME = BaseConfig.FILE_TRANS_AUTH_AK_NAME
     _AUTH_SK_NAME = BaseConfig.FILE_TRANS_AUTH_SK_NAME
     _DOMAIN_NAME = BaseConfig.FILE_TRANS_AUTH_DOMAIN
+    _SUB_DOMAIN = BaseConfig.FILE_TRANS_SUB_DOMAIN
 
     _USE_PROXY = BaseConfig.FILE_TRANS_PROXY
 
@@ -357,10 +358,14 @@ class FileOps:
         client = AsyncRequest(proxies=use_proxy)
         if _ak and _sk:
             iam_server = ctx.get(cls._ENDPOINT_NAME, None)
-            domain = ctx.get(cls._DOMAIN_NAME, None)
+            domain = ctx.get(cls._SUB_DOMAIN, None)
+            region = ctx.get(cls._DOMAIN_NAME, "cn-south-1").strip()
+            if not iam_server:
+                iam_server = f"https://iam.{region}.myhuaweicloud.com"
             try:
                 client.auth_with_iam(
-                    _ak, _sk, server=iam_server, domain=domain)
+                    _ak, _sk, server=iam_server,
+                    domain=domain, project_id=region)
             except: # noqa
                 pass
         elif _ak:

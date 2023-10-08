@@ -2,46 +2,49 @@
 
 ### [![LOGO](./docs/source/_static/logo150x150.png)](https://github.com/kubeedge/robosdk)
 
+Welcome to RoboSDK, an open-source cloud-native robotics toolchain designed to empower developers in building cutting-edge robotics applications. This README provides an overview of the project and its objectives, guiding developers on how to get started, and encouraging community engagement.
 
-### What is RoboSDK
+**Table of Contents**
+1. [Introduction](#introduction)
+2. [Features](#features)
+3. [Architecture](#architecture)
+4. [Getting Started](#getting-started)
+5. [Usage Examples](#usage-examples)
+6. [Community](#community)
+7. [Cite Us](#cite-us)
+8. [Roadmap](#roadmap)
+9. [Contributing](#contributing)
+10. [License](#license)
 
-`RoboSDK` is a light weight, high-level interface which provides hardware independent APIs for robotic control and perception.
-The goal of this project is to abstract away the low-level controls for developing APPs that runs on an industrial robot in an easy-to-use way.
+
+### Introduction
+
+`RoboSDK` is a cloud-native robotics development platform that aims to simplify and democratize the creation of sophisticated robotics applications. It provides a hardware-agnostic environment and middleware-based approach to seamlessly integrate cloud services with various robot operating systems. 
+
+`RoboSDK` empowers developers of all skill levels to innovate and unleash the potential of cloud-native robotics in diverse industries.
+
+The goal of this project is to abstract away the low-level controls for developing APPs that runs on robots in an easy-to-use way.
 
 ### Features
 
-`RoboSDK` provide the following features:
+- **Hardware Abstraction**: Bridge the gap between diverse robot hardware and simplify integration with standardized interfaces.
+- **Middleware Compatibility**: Seamlessly interact with various robot operating systems, including [ROS 1](https://wiki.ros.org/), [ROS 2](http://docs.ros.org/), and [OpenHarmony](https://www.openharmony.cn/).
+- **Cloud Integration**: Access powerful cloud resources for advanced robotics functionalities, such as `Object Storage Service` and `Real-Time Communication`.
+- **Simulators Interfacing**: Interact with simulators such as [Gazebo](http://gazebosim.org/) and [Pybullet](https://pybullet.org/wordpress/).
+- **Factory Registry**: Encourage modular contributions by providing a user-friendly development experience.
 
-- Defining the Running World
-    - A `World` represent an environment which the robot launch, such as interactive maps, active objects and scenarios.
-    - `simulator`: it provides some predefined scenarios such as Gazebo, and the reusable wheels for building new `World`.
-    
-- Sensor-Based Control for Registered Robots
-    - Object-oriented, unified interface for equivalent sensors, such as : `Camera`, `Lidar`, `IMU` and `Audio`. 
-      Therefore, they are guaranteed to have the same interface defined by the base class, for example, 
-      `Camera` would have `get_rgb`, `get_depth` as its member function, and their behavior would be the same across hardware.
-    - A `Robot` instance consists of multiple components of sensors which were extended the `BaseClass` respectively. `Robot` and `Sensor` is one-to-many.
-    - A `Robot` is controlled by invoking the `Sensor` interface. The robots are managed by combining multiple configurations of each sensor.
-    - Interconnection with Vendor-defined interface, like: socket-base gait change.
-    
-- Plug-in-and-play Algorithms
-    - Localize
-    - Perception
-    - Navigation
-    - Cloud-Edge Service
 
-- Robot Operating System Backend mapping
-  ```text
-  It provides a full-stack abstraction for Robot Operating System, such as message manager.
-  ```
-  
-  - Ros1 [stable]
-  - Ros2 [rc]
-  - openHarmony [alpha]
+### Architecture
+
+![Architecture](./docs/source/_static/architecture.png)
   
 
-### Installation
+### Getting Started
 
+Let’s walk through setting up a robot with a camera to complete a simple application development based on `RoboSDK`.
+
+<details>
+<summary>Installation</summary>
 - Prerequisites
   - Robot Operating System: such as [Ros noetic](http://wiki.ros.org/noetic/installation/ubuntu) 
 
@@ -67,7 +70,7 @@ The goal of this project is to abstract away the low-level controls for developi
     .\robo_venv\Scripts\activate
     ```
     
-- Install RoboSDK
+- Install `RoboSDK`
 
     ```sh
   # Git Clone the whole source code.
@@ -79,22 +82,101 @@ The goal of this project is to abstract away the low-level controls for developi
   # Install the pip package 
   pip3 install dist/robosdk*.whl
   ```
-  
-### Show Cases
+</details>
+
+<details>
+<summary>Simple application development</summary>
+
+#### Transmitting Robot's vision to the cloud
+
+- Step 1: Configure Robot with yaml file
+
+  ```yaml
+  # demo.yaml
+  name: "demo"
+  environment:
+    backend: "ros1"
+    requirement:
+      - rospy
+      - rostopic
+      - roslib
+  sensors:
+    camera:
+      - name: "cam1"
+        config: "simplecamera"
+        rgb:
+          target: "/usb_cam_1/image_raw"
+          actual_hz: 10
+          origin_hz: 30
+          is_compressed: false
+        info:
+          target: "/usb_cam_1/camera_info"
+  control:
+    - motion:
+      name: "ros_cmd_vel"
+      config: "cmd_vel"
+  ```
+
+- Step 2: Write a simple application
+
+  ```python
+  # demo.py
+
+  import cv2
+  import time
+
+  from robosdk.core.robot import Robot
+  from robosdk.common.fileops import FileOps
+
+
+  def main():
+      robot = Robot(name="my_robot", config="demo")
+      robot.connect()
+
+      total_img = 10
+      wait_time = .2
+      upload_target = "s3://test"
+
+      while total_img:
+          time.sleep(wait_time)
+
+          rgb, timer = robot.camera.get_rgb()
+          if rgb is None:
+              continue
+
+          _ = cv2.imwrite(f"./{timer}.png", rgb)
+          FileOps.upload(f"./{timer}.png", f"{upload_target}/{timer}.png")
+
+          total_img -= 1
+  ```
+
+- Step 3: Run the application
+
+  ```sh
+
+  source ./robo_venv/bin/activate
+  source /opt/ros/noetic/setup.bash
+
+  python3 demo.py
+  ```
+</details>
+
+### Usage Examples
 
 - Case I - [Legged-Robot Auto Gait Change](./examples/ysc_x20/auto_gait_change)
 - Case II - [Arm-Robot Teleoperation](./examples/scout_arm/teleoperation)
 
 
-### Supported
+### Community
 
-As we are currently fully tested in the following Robots/sensors, which is considered to be well supported :
+Join the KubeEdge Sig Robotics community! Engage in discussions, share ideas, and collaborate with like-minded developers. Feel free to reach out to us through [this documents](https://github.com/kubeedge/community/tree/master/sig-robotics).
 
-#### Robot
- - [x20](https://www.deeprobotics.cn/products_jy_3.html)
- - [scout](https://global.agilex.ai/products/scout-mini)
 
 ### [Cite Us](./CITATION)
+
+### [Roadmap](./docs/source/proposals/roadmap.md)
+
+### [Contributing](./CONTRIBUTING.md)
 
 ### License
 
